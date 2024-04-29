@@ -1,44 +1,17 @@
 package main
+
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"errors"
-	"strconv"
-	"bufio"
 )
+import roman "github.com/StefanSchroeder/Golang-Roman"
 
-func main() {
-	var input string
-	fmt.Println("Введите выражение арабскими или римскими цифрами")
-	fmt.Scanf(input)
-	base(strings.ReplaceAll(input, " ", ""))
-}
-
-var roman = map[string]int{
-	"C":    100,
-	"XC":   90,
-	"L":    50,
-	"XL":   40,
-	"X":    10,
-	"IX":   9,
-	"V":    5,
-	"IV":   4,
-	"I":    1,
-}
-var convIntToRoman = [14]int{
-	100,
-	90,
-	50,
-	40,
-	10,
-	9,
-	5,
-	4,
-	1,
-}
 var a, b *int
-var operations = map[string]func() int{
+var operators = map[string]func() int{
 	"+": func() int { return *a + *b },
 	"-": func() int { return *a - *b },
 	"/": func() int { return *a / *b },
@@ -46,21 +19,31 @@ var operations = map[string]func() int{
 }
 var data []string
 
-func checkRange(num *int) {
-	return *num > 0 && *num <= 10
+const (
+	NotMathError = "Не является математической операцией. В примере должно быть два числа и один оператор"
+	TwoOperandsError = "В примере не должно быть двух операторов"
+	DifferentNumbersError = "В примере оба числа должны быть одной системы счисления" 
+	NegativeRomanNumberError = "В римской системе нет чисел меньше нуля"
+	ZeroRomanNumberError  = "В римской системе нет числа 0."
+	MaxNumberValueError = "Калькулятор умеет работать только с арабскими целыми числами или римскими цифрами от 1 до 10 включительно"
+)
+
+func errorCheck(num int) bool {
+	if num < 1 || num > 10 {
+        panic(MaxNumberValueError)
+    } else {
+		return true
+	}
 }
 
 func base(s string) {
-	IsNotMathOperationError := errors.New("Не является математической операцией (слишком много мат. операций)")
-	MathEquasionFormError := errors.New("Не удовлетворяет заданию — два операнда и один оператор (+, -, /, *).")
-	RangeError := errors.New("Калькулятор умеет работать только с числами от 1 до 10")
-	NotationError := errors.New("В примере может использоваться только одна система счисления")
+	NotMathError := errors.New("не является математической операцией. В примере должно быть два числа и один оператор")
 	var operator string
-	var StringsFound int
+	var stringsFound int
 	numbers := make([]int, 0)
 	romans := make([]string, 0)
 	romansToInt := make([]int, 0)
-	for idx := range operations {
+	for idx := range operators {
 		for _, val := range s {
 			if idx == string(val) {
 				operator += idx
@@ -70,68 +53,55 @@ func base(s string) {
 	}
 	switch {
 	case len(operator) > 1:
-		panic(IsNotMathOperationError)
+		panic(TwoOperandsError)
 	case len(operator) < 1:
-		panic(MathEquasionFormError)
+		panic(NotMathError)
 	}
-
-
 	for _, elem := range data {
 		num, err := strconv.Atoi(elem)
 		if err != nil {
-			StringsFound++
+			stringsFound++
 			romans = append(romans, elem)
 		} else {
 			numbers = append(numbers, num)
 		}
 	}
-	switch StringsFound {
+
+	switch stringsFound {
 	case 0:
-		if val, ok := operations[operator]; ok == true && checkRange(&numbers[0]) == true && checkRange(&numbers[1]) == true {
+		if val, ok := operators[operator]; ok && errorCheck(numbers[0]) && errorCheck(numbers[1]) {
 			a, b = &numbers[0], &numbers[1]
-			fmt.Println(val())
-		} else {
-			panic(RangeError)
+			fmt.Println("Ответ:",val())
 		}
 	case 1:
-		panic(NotationError)
+		panic(DifferentNumbersError)
 	case 2:
 		for _, elem := range romans {
-			if val, ok := roman[elem]; ok == true && checkRange(&val) == true {
-                romansToInt = append(romansToInt, val)
-            } else {
-                panic(RangeError)
-            }
-			if val, ok := operations[operator]; ok == true {
-				a, b = &romansToInt[0], &romansToInt[1]
-				intToRoman(val())
+			romanInArabic := roman.Arabic(elem)
+			if errorCheck(romanInArabic) {
+				romansToInt = append(romansToInt, romanInArabic)
 			}
+		}
+		if val, ok := operators[operator]; ok {
+			a, b = &romansToInt[0], &romansToInt[1]
+			answer := val()
+			switch {
+			case answer == 0:
+				panic(ZeroRomanNumberError)
+			case answer < 0:
+				panic(NegativeRomanNumberError)
+			}
+			fmt.Println("Ответ:", roman.Roman(val()))
 		}
 	}
 }
 
-func intToRoman(romanResult int) {
-	ZeroRomansError := errors.New("В римских цифрах не может быть нуля")
-	NegativeRomansError := errors.New("Римские цифры не могут быть отрицательными")
-	var FinalRomanString string
-	switch {
-	case romanResult == 0:
-		panic(ZeroRomansError)
-	case romanResult < 0:
-		panic(NegativeRomansError)
-	case romanResult > 0:
-		for romanResult > 0 {
-			for _, elem := range convIntToRoman {
-				for i := elem; i <= romanResult; {
-					for index, value := range roman {
-						if value == elem {
-							FinalRomanString += index
-							romanResult -= elem
-						}
-					}
-				}
-			}
-		}
-		fmt.Println(FinalRomanString)
+func main() {
+	fmt.Println("Введите математическое выражение:")
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		console, _ := reader.ReadString('\n')
+		s := strings.ReplaceAll(console, " ", "")
+		base(strings.ToUpper(strings.TrimSpace(s)))
 	}
 }
