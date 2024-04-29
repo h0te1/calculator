@@ -114,13 +114,19 @@ func romanToArabic(roman string) int {
 }
 
 func arabicToRoman(arabic int) string {
-	romanNumerals := map[int]string{1000: "M", 900: "CM", 500: "D", 400: "CD", 100: "C", 90: "XC", 50: "L", 40: "XL", 10: "X", 9: "IX", 5: "V", 4: "IV", 1: "I"}
-
+	romanNumerals := map[int]string{100: "C", 90: "XC", 50: "L", 40: "XL", 10: "X", 9: "IX", 5: "V", 4: "IV", 1: "I"}
+	extraHelp := [9]int {100, 90, 50, 40, 10, 9, 5, 4, 1}
 	roman := ""
-	for value, numeral := range romanNumerals {
-		for arabic >= value {
-			roman += numeral
-			arabic -= value
+	for arabic > 0 {
+		for _, elem := range extraHelp {
+			for i := elem; i <= arabic; {
+				for equivalent, numerals := range romanNumerals {
+					if equivalent == elem {
+						roman += numerals
+						arabic -= equivalent
+					}
+				}
+			}
 		}
 	}
 	return roman
