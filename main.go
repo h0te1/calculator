@@ -8,7 +8,6 @@ import (
 	"strings"
 	"errors"
 )
-import roman "github.com/StefanSchroeder/Golang-Roman"
 
 var a, b *int
 var operators = map[string]func() int{
@@ -77,7 +76,7 @@ func base(s string) {
 		panic(DifferentNumbersError)
 	case 2:
 		for _, elem := range romans {
-			romanInArabic := roman.Arabic(elem)
+			romanInArabic := romanToArabic(elem)
 			if errorCheck(romanInArabic) {
 				romansToInt = append(romansToInt, romanInArabic)
 			}
@@ -91,9 +90,40 @@ func base(s string) {
 			case answer < 0:
 				panic(NegativeRomanNumberError)
 			}
-			fmt.Println("Ответ:", roman.Roman(val()))
+			fmt.Println("Ответ:", arabicToRoman(val()))
 		}
 	}
+}
+
+func romanToArabic(roman string) int {
+	romanNumerals := map[rune]int{'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
+	arabic := 0
+	prevValue := 0
+
+	for _, char := range roman {
+		value := romanNumerals[char]
+		if value > prevValue {
+			arabic += value - 2*prevValue
+		} else {
+			arabic += value
+		}
+		prevValue = value
+	}
+
+	return arabic
+}
+
+func arabicToRoman(arabic int) string {
+	romanNumerals := map[int]string{1000: "M", 900: "CM", 500: "D", 400: "CD", 100: "C", 90: "XC", 50: "L", 40: "XL", 10: "X", 9: "IX", 5: "V", 4: "IV", 1: "I"}
+
+	roman := ""
+	for value, numeral := range romanNumerals {
+		for arabic >= value {
+			roman += numeral
+			arabic -= value
+		}
+	}
+	return roman
 }
 
 func main() {
